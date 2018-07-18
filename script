@@ -1,0 +1,473 @@
+//$tab MainDefault
+//============================================================
+SET ThousandSep=' ';
+SET DecimalSep=',';
+SET MoneyThousandSep=' ';
+SET MoneyDecimalSep=',';
+SET MoneyFormat='# ##0,00 ₽;-# ##0,00 ₽';
+SET TimeFormat='h:mm:ss';
+SET DateFormat='DD.MM.YYYY';
+SET TimestampFormat='DD.MM.YYYY h:mm:ss[.fff]';
+SET FirstWeekDay=0;
+SET BrokenWeeks=1;
+SET ReferenceDay=0;
+SET FirstMonthOfYear=1;
+SET CollationLocale='ru-RU';
+SET MonthNames='янв;фев;мар;апр;май;июн;июл;авг;сен;окт;ноя;дек';
+SET LongMonthNames='Январь;Февраль;Март;Апрель;Май;Июнь;Июль;Август;Сентябрь;Октябрь;Ноябрь;Декабрь';
+SET DayNames='Пн;Вт;Ср;Чт;Пт;Сб;Вс';
+SET LongDayNames='понедельник;вторник;среда;четверг;пятница;суббота;воскресенье';
+SET CRLF='chr(10)&chr(13)';
+
+//============================================================
+//$tab Paht2QVD
+//============================================================
+
+//Настройка констант с путями к данным
+/*
+SET vPathQVDs_MUSS = '\\sbt-oko-001\Qlik_DWH\OKO\DATA\EXTRACTED\MUSS\';                             //путь до каталога с выгрузкой из МУСС
+SET vPathQVDs_01 = '\\sbt-oko-001\Qlik_DWH\OKO\DATA\DATAMART\JIRA\01\';                             //путь до каталога витрины 1-го уровня
+SET vPathExtractedAlphaQVDs = '\\sbt-oko-001\Qlik_DWH\OKO\DATA\EXTRACTED\JIRA_ALPHA\';              //путь до выгруженных данных из альфа
+SET vPathExtractedSigmaQVDs = '\\sbt-oko-001\Qlik_DWH\OKO\DATA\EXTRACTED\JIRA_SIGMA\';              //путь до выгруженных данных из сигма
+SET vPathExtractedDomclickQVDs = '\\sbt-oko-001\Qlik_DWH\OKO\DATA\EXTRACTED\JIRA_DOMCLICK\';        //путь до выгруженных данных из домклик
+SET vPathQVDs_BV = '\\sbt-oko-001\Qlik_DWH\OKO\DATA\DATAMART\JIRA\BV\';                             //путь до каталога витрины burndown & velocity
+*/
+
+/*
+Основные переменные (пути к данным) // прописываем не в файле а в скрипте
+$(Include=0_config\cfg_datapath.txt);
+*/
+
+//============================================================
+//$tab IssuesAttributes
+//============================================================
+
+/*
+CustomFieldOptions:
+LOAD
+     [%CustomField ID], 
+//     [CustomFieldOption config], 
+     [CustomFieldOption value] as [Implemented in], 
+     [CustomFieldOption disabled status], 
+     [%CustomFieldOption ID]
+//     [CustomFieldOption type], 
+//     [CustomFieldOption parent ID], 
+//     [CustomFieldOption sequence]
+FROM $(vPathQVDs_01)CustomFieldOptions.qvd (qvd);
+*/
+
+Issues:
+LOAD
+     [%Issue ID],
+     [%Project ID],
+     [%Issue type ID],
+//     [Issue summary],
+//     [Issue description],
+//     [%Issue priority ID],
+//     [%Issue resolution ID],
+     [%Issue status ID]
+//     [# of votes],
+//     [# of watches],
+//     [Issue number],
+//     [Time original estimate]/3600 as [Time original estimate],
+//     [Time estimate],
+//     [Time spent],
+//     [Reporter username],
+//     [Assignee username],
+//     [Creater username],
+//     [Datetime create],
+//     [Datetime update],
+//     [Datetime due],
+//     [Datetime resolution]
+//     [Issue domen], 
+//     [%Sprint ID],
+FROM $(vPathQVDs_01)Issues.qvd (qvd);
+
+/*
+CustomFieldValues:
+LOAD
+     [%CustomFieldValue ID], 
+     [%Issue ID], 
+     [%CustomField ID], 
+//     [CustomField parent key], 
+     Left([%Issue ID],2)&[CustomField string value] as [%CustomFieldOption ID]
+//     [CustomField number value], 
+//     [CustomField text value], 
+//     [CustomField date value], 
+//     [CustomField value type]
+FROM $(vPathQVDs_01)CustomFieldValues.qvd (qvd)
+WHERE [%CustomField ID]='A-19800' or [%CustomField ID]='S-16500';
+*/
+
+FixVersions:
+LOAD
+     [Version ID] as [%FixVersion ID],
+//     [%Project ID],
+     [Version name],
+//     [Version description],
+     If(IsNull([Version released flag]), 'false', 'true') as [Version released flag],
+     If(IsNull([Version archived flag]), 'false', 'true') as [Version archived flag],
+//     [Version url],
+     [Version start date],
+     [Version release date]
+FROM $(vPathQVDs_01)ProjectVersions.qvd (qvd);
+
+Projects:
+LOAD
+     [%Project ID],
+     [Project name],
+//     [Project lead username],
+//     Left([%Project ID],2) & [Project lead username] as %Username,
+//     Description,
+     [%Project key]
+//     [Project type],
+//     [%Tribe ID],
+FROM $(vPathQVDs_01)Projects.qvd (qvd);
+
+//   Left Join (Projects)
+
+/*
+Tribes:
+LOAD
+     [%Tribe ID], 
+     [Tribe name]
+//     [Agile tribe flag]
+FROM $(vPathQVDs_01)Tribes.qvd (qvd);
+
+Left Join (Issues)
+*/
+
+IssuesStatuses:
+LOAD
+     [%Issue status ID],
+     [Issue status name]
+//     [Issue status description],
+//     [Issue status category ID],
+FROM $(vPathQVDs_01)IssuesStatuses.qvd (qvd);
+
+//   Left Join (Issues)
+
+IssuesTypes:
+LOAD
+     [%Issue type ID],
+     [Issue type name]
+//     [Issue type description],
+FROM $(vPathQVDs_01)IssuesTypes.qvd (qvd);
+
+BV_Squads:
+LOAD
+     [%Project key],
+//     If(IsNull([Tribe name MUSS]), '_EMPTY_', [Tribe name MUSS]) as [Tribe name MUSS]
+     [Tribe name MUSS]
+//     Concat(DISTINCT [Tribe name MUSS],$(CRLF)) as [Tribe name MUSS]
+//     [Tribe lead MUSS],
+//     [Squad code MUSS],
+//     Concat([Squad name MUSS],$(CRLF)) as [Squad name MUSS],
+//     Concat(DISTINCT [Squad type MUSS], $(CRLF)) as [Squad type MUSS],
+//     Concat(DISTINCT [Squad status MUSS], $(CRLF)) as [Squad status MUSS]
+//     [%Project ID],
+//     [Project name]
+FROM $(vPathQVDs_BV)BV_Squads.qvd (qvd)
+
+WHERE
+/*
+     ([Tribe name MUSS] = 'Базовые платформенные сервисы'
+     OR [Tribe name MUSS] = 'Трайб "Компоненты ЕФС"')
+     AND
+*/
+     [Squad status MUSS] = 'Активна'
+     AND
+     [Squad type MUSS] = 'Change';
+
+//Group by [%Project key];
+
+/*
+Users:
+LOAD 
+     %Username,
+     [User display name] as [Project lead name]
+FROM $(vPathQVDs_01)Users.qvd (qvd);
+*/
+
+//============================================================
+//$tab TransformFixVersions
+//============================================================
+
+FixVersions_Issues:
+LOAD
+	'A-'&source_node_id as [%Issue ID],
+     'A-'&sink_node_id as [%FixVersion ID],
+     association_type
+FROM $(vPathExtractedAlphaQVDs)NodeAssociations.qvd (qvd)
+WHERE association_type='IssueFixVersion';
+
+Concatenate (FixVersions_Issues)
+
+LOAD
+	'E-'&source_node_id as [%Issue ID],
+     'E-'&sink_node_id as [%FixVersion ID],
+     association_type
+FROM $(vPathExtractedDomclickQVDs)NodeAssociations.qvd (qvd)
+WHERE association_type='IssueFixVersion';
+
+Concatenate (FixVersions_Issues)
+
+LOAD
+	'S-'&source_node_id as [%Issue ID],
+     'S-'&sink_node_id as [%FixVersion ID],
+     association_type
+FROM $(vPathExtractedSigmaQVDs)NodeAssociations.qvd (qvd)
+WHERE association_type='IssueFixVersion';
+
+DROP Field association_type;
+
+
+
+//============================================================
+//$tab ProductOwner
+//============================================================
+
+TMP_ProductOwner:
+LOAD Distinct
+//   Трайб as [Tribe name MUSS], 
+//   [Лидер трайба] as [Tribe lead MUSS], 
+//   [Код команды] as [Squad code MUSS], 
+//   Команда as [Squad name MUSS], 
+//   [Тип команды] as [Squad type MUSS],
+     Left(If([Домен проектной области]='Внешний','External',[Домен проектной области]),1)&'-'&Trim([Проектная область JIRA]) as [%Project key], 
+//   If([Домен проектной области]='Внешний','External',[Домен проектной области]) as [Project domen],
+//   [Статус команды] as [Squad status MUSS],
+     [Владелец продукта]
+FROM $(vPathQVDs_MUSS)SquadStructureReport_XML.qvd (qvd)
+WHERE ((Len(Left(If([Домен проектной области]='Внешний','External',[Домен проектной области]),1)&'-'&Trim([Проектная область JIRA]))>3 and [Статус команды]='Активна' and [Тип команды]='Change')  and
+		Left(If([Домен проектной области]='Внешний','External',[Домен проектной области]),1)&'-'&Trim([Проектная область JIRA]) <> 'S-DBMV') or //Exclude squads
+		(Left(If([Домен проектной области]='Внешний','External',[Домен проектной области]),1)&'-'&Trim([Проектная область JIRA]) = 'A-KOB' or // Include squads
+		Left(If([Домен проектной области]='Внешний','External',[Домен проектной области]),1)&'-'&Trim([Проектная область JIRA]) = 'A-MISSOURI');
+
+Left Join(BV_Squads)
+LOAD 
+	[%Project key],
+	Concat([Владелец продукта],$(CRLF)) as [Product Owner]
+Resident TMP_ProductOwner
+Group by [%Project key];
+
+DROP Table TMP_ProductOwner;
+
+//============================================================
+//$tab ProjectCategory
+//============================================================
+
+ProjectCategory:
+LOAD 
+     'A-' & id as [%ProjectCategory ID],
+     cname as [ProjectCategory Name]
+From $(vPathExtractedAlphaQVDs)ProjectCategory.qvd (qvd);
+
+Concatenate (ProjectCategory)
+
+LOAD 
+     'E-' & id as [%ProjectCategory ID],
+     cname as [ProjectCategory Name]
+From $(vPathExtractedDomclickQVDs)ProjectCategory.qvd (qvd);
+
+Concatenate (ProjectCategory)
+
+LOAD 
+     'S-' & id as [%ProjectCategory ID],
+     cname as [ProjectCategory Name]
+From $(vPathExtractedSigmaQVDs)ProjectCategory.qvd (qvd);
+
+
+
+Project_ProjectCategory:
+LOAD
+     'A-'&source_node_id as [%Project ID],
+     'A-'&sink_node_id as [%ProjectCategory ID],
+     association_type
+FROM $(vPathExtractedAlphaQVDs)NodeAssociations.qvd (qvd)
+WHERE association_type='ProjectCategory';
+
+Concatenate (Project_ProjectCategory)
+
+LOAD
+     'E-'&source_node_id as [%Project ID],
+     'E-'&sink_node_id as [%ProjectCategory ID],
+     association_type
+FROM $(vPathExtractedDomclickQVDs)NodeAssociations.qvd (qvd)
+WHERE association_type='ProjectCategory';
+
+Concatenate (Project_ProjectCategory)
+
+LOAD
+     'S-'&source_node_id as [%Project ID],
+     'S-'&sink_node_id as [%ProjectCategory ID],
+     association_type
+FROM $(vPathExtractedSigmaQVDs)NodeAssociations.qvd (qvd)
+WHERE association_type='ProjectCategory';
+
+DROP Field association_type;
+
+//============================================================
+//$tab unused
+//============================================================
+
+/*
+
+//============================================================
+//$tab TransformAffectedVersions
+//============================================================
+
+TMP_AffectedVersions:
+LOAD
+     'A-'&source_node_id as [%Issue ID],
+     'A-'&sink_node_id as [%AffectedVersion ID],
+     association_type
+FROM $(vPathExtractedAlphaQVDs)NodeAssociations.qvd (qvd)
+WHERE association_type='IssueVersion';
+
+Concatenate (TMP_AffectedVersions)
+
+LOAD
+     'E-'&source_node_id as [%Issue ID],
+     'E-'&sink_node_id as [%AffectedVersion ID],
+     association_type
+FROM $(vPathExtractedDomclickQVDs)NodeAssociations.qvd (qvd)
+WHERE association_type='IssueVersion';
+
+Concatenate (TMP_AffectedVersions)
+
+LOAD
+     'S-'&source_node_id as [%Issue ID],
+     'S-'&sink_node_id as [%AffectedVersion ID],
+     association_type
+FROM $(vPathExtractedSigmaQVDs)NodeAssociations.qvd (qvd)
+WHERE association_type='IssueVersion';
+
+DROP Field association_type;
+
+Left Join(TMP_AffectedVersions)
+
+//NoConcatenate
+LOAD [%FixVersion ID] as [%AffectedVersion ID], 
+//     [%Project ID], 
+//     Concat([Version name],$(CRLF)) as [AffectedVersion name]
+       [Version name] as [AffectedVersion name]
+//     [Version description], 
+//     [Version released flag], 
+//     [Version archived flag], 
+//     [Version url], 
+//     [Version start date], 
+//     [Version release date]
+Resident FixVersions;
+//Group by [%Issue ID];
+//FROM
+//$(vPathQVDs_01)ProjectVersions.qvd (qvd);
+
+
+AffectedVersions:
+//NoConcatenate
+LOAD [%Issue ID],
+     Concat([AffectedVersion name],$(CRLF)) as [AffectedVersion name]
+Resident TMP_AffectedVersions
+Group by [%Issue ID];
+
+DROP Table TMP_AffectedVersions;
+
+
+//============================================================
+//$tab RelatedEpics
+//============================================================
+
+IssueLinks:
+LOAD [Link type ID], 
+     [Link ID], 
+     [%Issue ID source] as [%Epic ID], 
+     [%Issue ID destination] as [%Issue ID], 
+     [Link name], 
+     [Link inward description], 
+     [Link outward description]
+FROM $(vPathQVDs_01)IssueLinks.qvd (qvd)
+WHERE [Link outward description]='is Epic of';
+
+Epics:
+NoConcatenate
+LOAD [%Issue ID] as [%Epic ID], 
+     [%Project ID] as [%Epics project ID], 
+     [%Issue type ID] as [Epic type ID], 
+     [Issue summary] as [Epic summary], 
+     [Issue number] as [Epic number],
+     [%Issue status ID] as [%Epic status ID]
+RESIDENT Issues
+WHERE [%Issue type ID]='A-20' or [%Issue type ID]='E-10000' or [%Issue type ID]='S-10000';
+
+Left Join (Epics)
+
+LOAD [%Project ID] as [%Epics project ID], 
+     [Project name] as [Epics project name], 
+//     [Project lead username], 
+//     Description, 
+     [%Project key] as [Epics project key]
+//     [Project type], 
+//     [%Tribe ID]
+RESIDENT Projects;
+
+Left Join (Epics)
+
+EpicStatuses:
+LOAD [%Issue status ID] as [%Epic status ID],
+     [Issue status name] as [Epic status name]
+//     [Issue status description], 
+//     [Issue status category ID]
+FROM $(vPathQVDs_01)IssuesStatuses.qvd (qvd);
+
+DROP Fields [%CustomField ID], [%Issue type ID], [%Epics project ID]; // [%Issue status ID],
+
+
+//============================================================
+//$tab CustomFields
+//============================================================
+
+TMP_CustomFieldsValues:
+LOAD
+      [%CustomField ID], 
+     [CustomField name]
+FROM $(vPathQVDs_01)CustomFields.qvd (qvd)
+WHERE [CustomField name]='Estimation for Analysis in Man-Days' or [CustomField name]='Estimation for Development in Man-Days' or [CustomField name]='Story Points';
+
+Left Join (TMP_CustomFieldsValues)
+
+LOAD
+     [%Issue ID], 
+     [%CustomField ID], 
+     [CustomField number value]
+FROM $(vPathQVDs_01)CustomFieldValues.qvd (qvd);
+
+Left Join (Issues)
+      
+LOAD
+     [%Issue ID],
+     [CustomField number value] as [Story Points]
+RESIDENT TMP_CustomFieldsValues
+WHERE [CustomField name]='Story Points';
+
+Left Join (Issues)
+      
+LOAD
+     [%Issue ID],
+     [CustomField number value] as [Estimation for Development in Man-Days]
+RESIDENT TMP_CustomFieldsValues
+WHERE [CustomField name]='Estimation for Development in Man-Days';
+
+Left Join (Issues)
+      
+LOAD
+     [%Issue ID],
+     [CustomField number value] as [Estimation for Analysis in Man-Days]
+RESIDENT TMP_CustomFieldsValues
+WHERE [CustomField name]='Estimation for Analysis in Man-Days';
+
+DROP Table TMP_CustomFieldsValues;
+
+
+
+*/
