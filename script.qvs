@@ -1,8 +1,7 @@
-//version 2.5
-
-
-//$tab MainDefault
 //============================================================
+//version 2.7
+//============================================================
+
 SET ThousandSep=' ';
 SET DecimalSep=',';
 SET MoneyThousandSep=' ';
@@ -23,23 +22,15 @@ SET LongDayNames='понедельник;вторник;среда;четвер�
 SET CRLF='chr(10)&chr(13)';
 
 //============================================================
-//$tab Paht2QVD
+//Доступ к данным
 //============================================================
 
-//Настройка констант с путями к данным
-/*
 SET vPathQVDs_MUSS = '\\sbt-oko-001\Qlik_DWH\OKO\DATA\EXTRACTED\MUSS\';                             //путь до каталога с выгрузкой из МУСС
 SET vPathQVDs_01 = '\\sbt-oko-001\Qlik_DWH\OKO\DATA\DATAMART\JIRA\01\';                             //путь до каталога витрины 1-го уровня
 SET vPathExtractedAlphaQVDs = '\\sbt-oko-001\Qlik_DWH\OKO\DATA\EXTRACTED\JIRA_ALPHA\';              //путь до выгруженных данных из альфа
 SET vPathExtractedSigmaQVDs = '\\sbt-oko-001\Qlik_DWH\OKO\DATA\EXTRACTED\JIRA_SIGMA\';              //путь до выгруженных данных из сигма
 SET vPathExtractedDomclickQVDs = '\\sbt-oko-001\Qlik_DWH\OKO\DATA\EXTRACTED\JIRA_DOMCLICK\';        //путь до выгруженных данных из домклик
 SET vPathQVDs_BV = '\\sbt-oko-001\Qlik_DWH\OKO\DATA\DATAMART\JIRA\BV\';                             //путь до каталога витрины burndown & velocity
-*/
-
-/*
-Основные переменные (пути к данным) // прописываем не в файле а в скрипте
-$(Include=0_config\cfg_datapath.txt);
-*/
 
 //============================================================
 //$tab IssuesAttributes
