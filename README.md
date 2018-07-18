@@ -1,2 +1,1 @@
 # sbt-qlik
-test
