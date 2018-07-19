@@ -1,6 +1,6 @@
-//============================================================
-//version 2.8
-//============================================================
+// ============================================================
+// version 3.0
+// ============================================================
 
 SET ThousandSep=' ';
 SET DecimalSep=',';
@@ -21,9 +21,9 @@ SET DayNames='Пн;Вт;Ср;Чт;Пт;Сб;Вс';
 SET LongDayNames='понедельник;вторник;среда;четверг;пятница;суббота;воскресенье';
 SET CRLF='chr(10)&chr(13)';
 
-//============================================================
-//Доступ к данным
-//============================================================
+// ============================================================
+// data
+// ============================================================
 
 SET vPathQVDs_MUSS = '\\sbt-oko-001\Qlik_DWH\OKO\DATA\EXTRACTED\MUSS\';                             //путь до каталога с выгрузкой из МУСС
 SET vPathQVDs_01 = '\\sbt-oko-001\Qlik_DWH\OKO\DATA\DATAMART\JIRA\01\';                             //путь до каталога витрины 1-го уровня
@@ -32,9 +32,11 @@ SET vPathExtractedSigmaQVDs = '\\sbt-oko-001\Qlik_DWH\OKO\DATA\EXTRACTED\JIRA_SI
 SET vPathExtractedDomclickQVDs = '\\sbt-oko-001\Qlik_DWH\OKO\DATA\EXTRACTED\JIRA_DOMCLICK\';        //путь до выгруженных данных из домклик
 SET vPathQVDs_BV = '\\sbt-oko-001\Qlik_DWH\OKO\DATA\DATAMART\JIRA\BV\';                             //путь до каталога витрины burndown & velocity
 
-//============================================================
-//IssuesAttributes
-//============================================================
+SET vDICT_BPS_DB = 'C:\Users\Rubtsov3-AA\Documents\QLIK\rep_3\dict_bps_db.xlsx';           //path to dictionary of BPS and DB in my local docs
+
+// ============================================================
+// from vPathQVDs_01
+// ============================================================
 
 Issues:
 LOAD
@@ -45,10 +47,10 @@ LOAD
 //     [Issue description],
 //     [%Issue priority ID],
 //     [%Issue resolution ID],
-     [%Issue status ID]
+     [%Issue status ID],
 //     [# of votes],
 //     [# of watches],
-//     [Issue number],
+     [Issue number]
 //     [Time original estimate]/3600 as [Time original estimate],
 //     [Time estimate],
 //     [Time spent],
@@ -81,7 +83,7 @@ LOAD
      [%Project ID],
      [Project name],
 //     [Project lead username],
-//     Left([%Project ID],2) & [Project lead username] as %Username,
+     Left([%Project ID],2) & [Project lead username] as %Username,
 //     Description,
      [%Project key]
 //     [Project type],
@@ -103,33 +105,55 @@ LOAD
 //     [Issue type description],
 FROM $(vPathQVDs_01)IssuesTypes.qvd (qvd);
 
-BV_Squads:
+Users:
 LOAD
-     [%Project key],
-//     If(IsNull([Tribe name MUSS]), '_EMPTY_', [Tribe name MUSS]) as [Tribe name MUSS]
-     [Tribe name MUSS]
-//     Concat(DISTINCT [Tribe name MUSS],$(CRLF)) as [Tribe name MUSS]
-//     [Tribe lead MUSS],
-//     [Squad code MUSS],
-//     Concat([Squad name MUSS],$(CRLF)) as [Squad name MUSS],
-//     Concat(DISTINCT [Squad type MUSS], $(CRLF)) as [Squad type MUSS],
-//     Concat(DISTINCT [Squad status MUSS], $(CRLF)) as [Squad status MUSS]
-//     [%Project ID],
-//     [Project name]
-FROM $(vPathQVDs_BV)BV_Squads.qvd (qvd)
+     %Username,
+     [User display name] as [Project lead name]
+FROM $(vPathQVDs_01)Users.qvd (qvd);
 
-WHERE
-     [Squad status MUSS] = 'Активна'
-     AND
-     [Squad type MUSS] = 'Change';
+// ============================================================
+// from vDICT_BPS_DB
+// ============================================================
 
-//============================================================
-//TransformFixVersions
-//============================================================
+dict_bps_db:
+LOAD
+     [dict_tribe],
+     [dict_PK] as [%Project key],
+     [dict_cluster]
+FROM $(vDICT_BPS_DB) (ooxml, embedded labels, table is dict);
+
+
+// // ============================================================
+// // from vPathQVDs_BV
+// // ============================================================
+
+// BV_Squads:
+// LOAD
+//      [%Project key],
+// //     If(IsNull([Tribe name MUSS]), '_EMPTY_', [Tribe name MUSS]) as [Tribe name MUSS]
+//      [Tribe name MUSS]
+// //     Concat(DISTINCT [Tribe name MUSS],$(CRLF)) as [Tribe name MUSS]
+// //     [Tribe lead MUSS],
+// //     [Squad code MUSS],
+// //     Concat([Squad name MUSS],$(CRLF)) as [Squad name MUSS],
+// //     Concat(DISTINCT [Squad type MUSS], $(CRLF)) as [Squad type MUSS],
+// //     Concat(DISTINCT [Squad status MUSS], $(CRLF)) as [Squad status MUSS]
+// //     [%Project ID],
+// //     [Project name]
+// FROM $(vPathQVDs_BV)BV_Squads.qvd (qvd)
+
+// WHERE
+//      [Squad status MUSS] = 'Активна'
+//      AND
+//      [Squad type MUSS] = 'Change';
+
+// ============================================================
+// TransformFixVersions
+// ============================================================
 
 FixVersions_Issues:
 LOAD
-	'A-'&source_node_id as [%Issue ID],
+     'A-'&source_node_id as [%Issue ID],
      'A-'&sink_node_id as [%FixVersion ID],
      association_type
 FROM $(vPathExtractedAlphaQVDs)NodeAssociations.qvd (qvd)
@@ -138,7 +162,7 @@ WHERE association_type='IssueFixVersion';
 Concatenate (FixVersions_Issues)
 
 LOAD
-	'E-'&source_node_id as [%Issue ID],
+     'E-'&source_node_id as [%Issue ID],
      'E-'&sink_node_id as [%FixVersion ID],
      association_type
 FROM $(vPathExtractedDomclickQVDs)NodeAssociations.qvd (qvd)
@@ -147,7 +171,7 @@ WHERE association_type='IssueFixVersion';
 Concatenate (FixVersions_Issues)
 
 LOAD
-	'S-'&source_node_id as [%Issue ID],
+     'S-'&source_node_id as [%Issue ID],
      'S-'&sink_node_id as [%FixVersion ID],
      association_type
 FROM $(vPathExtractedSigmaQVDs)NodeAssociations.qvd (qvd)
@@ -155,39 +179,39 @@ WHERE association_type='IssueFixVersion';
 
 DROP Field association_type;
 
-//============================================================
-//ProductOwner
-//============================================================
+// // ============================================================
+// // ProductOwner
+// // ============================================================
 
-TMP_ProductOwner:
-LOAD Distinct
-//   Трайб as [Tribe name MUSS], 
-//   [Лидер трайба] as [Tribe lead MUSS], 
-//   [Код команды] as [Squad code MUSS], 
-//   Команда as [Squad name MUSS], 
-//   [Тип команды] as [Squad type MUSS],
-     Left(If([Домен проектной области]='Внешний','External',[Домен проектной области]),1)&'-'&Trim([Проектная область JIRA]) as [%Project key], 
-//   If([Домен проектной области]='Внешний','External',[Домен проектной области]) as [Project domen],
-//   [Статус команды] as [Squad status MUSS],
-     [Владелец продукта]
-FROM $(vPathQVDs_MUSS)SquadStructureReport_XML.qvd (qvd)
-WHERE ((Len(Left(If([Домен проектной области]='Внешний','External',[Домен проектной области]),1)&'-'&Trim([Проектная область JIRA]))>3 and [Статус команды]='Активна' and [Тип команды]='Change')  and
-		Left(If([Домен проектной области]='Внешний','External',[Домен проектной области]),1)&'-'&Trim([Проектная область JIRA]) <> 'S-DBMV') or //Exclude squads
-		(Left(If([Домен проектной области]='Внешний','External',[Домен проектной области]),1)&'-'&Trim([Проектная область JIRA]) = 'A-KOB' or // Include squads
-		Left(If([Домен проектной области]='Внешний','External',[Домен проектной области]),1)&'-'&Trim([Проектная область JIRA]) = 'A-MISSOURI');
+// TMP_ProductOwner:
+// LOAD Distinct
+// //   Трайб as [Tribe name MUSS], 
+// //   [Лидер трайба] as [Tribe lead MUSS], 
+// //   [Код команды] as [Squad code MUSS], 
+// //   Команда as [Squad name MUSS], 
+// //   [Тип команды] as [Squad type MUSS],
+//      Left(If([Домен проектной области]='Внешний','External',[Домен проектной области]),1)&'-'&Trim([Проектная область JIRA]) as [%Project key], 
+// //   If([Домен проектной области]='Внешний','External',[Домен проектной области]) as [Project domen],
+// //   [Статус команды] as [Squad status MUSS],
+//      [Владелец продукта]
+// FROM $(vPathQVDs_MUSS)SquadStructureReport_XML.qvd (qvd)
+// WHERE ((Len(Left(If([Домен проектной области]='Внешний','External',[Домен проектной области]),1)&'-'&Trim([Проектная область JIRA]))>3 and [Статус команды]='Активна' and [Тип команды]='Change')  and
+//        Left(If([Домен проектной области]='Внешний','External',[Домен проектной области]),1)&'-'&Trim([Проектная область JIRA]) <> 'S-DBMV') or //Exclude squads
+//        (Left(If([Домен проектной области]='Внешний','External',[Домен проектной области]),1)&'-'&Trim([Проектная область JIRA]) = 'A-KOB' or // Include squads
+//        Left(If([Домен проектной области]='Внешний','External',[Домен проектной области]),1)&'-'&Trim([Проектная область JIRA]) = 'A-MISSOURI');
 
-Left Join(BV_Squads)
-LOAD 
-	[%Project key],
-	Concat([Владелец продукта],$(CRLF)) as [Product Owner]
-Resident TMP_ProductOwner
-Group by [%Project key];
+// Left Join(BV_Squads)
+// LOAD 
+//   [%Project key],
+//   Concat([Владелец продукта],$(CRLF)) as [Product Owner]
+// Resident TMP_ProductOwner
+// Group by [%Project key];
 
-DROP Table TMP_ProductOwner;
+// DROP Table TMP_ProductOwner;
 
-//============================================================
-//ProjectCategory
-//============================================================
+// ============================================================
+// ProjectCategory
+// ============================================================
 
 ProjectCategory:
 LOAD 
